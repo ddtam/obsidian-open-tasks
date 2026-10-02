@@ -26,7 +26,7 @@ path: Projects/Tapestri Clone Caller
 
 ## Conventions it assumes
 
-The task convention is in the ai_brain vault at `Meta/Open tasks have one home, and a search view per project.md`: one checkbox per task, a `^task-<slug>` block id at the end of the line, and a priority tag before it.
+The task convention is in the ai_brain vault at `Meta/Open tasks have one home, and one view per project.md`: one checkbox per task, a `^task-<slug>` block id at the end of the line, and a priority tag before it.
 
 ## Releasing
 
