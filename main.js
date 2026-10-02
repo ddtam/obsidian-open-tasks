@@ -183,6 +183,27 @@ function statusGlyph(ch, status) {
     return wrap;
 }
 
+/**
+ * The latest ISO date in a task's indented continuation: the lines
+ * after it that are indented deeper, up to the first that is not. A
+ * status note is written on the task line or on an indented child, and
+ * both forms are in use, so a done task dated only on its child must
+ * still be dated.
+ */
+function blockDate(lines, n) {
+    const indent = (s) => s.match(/^\s*/)[0].replace(/\t/g, '    ').length;
+    const base = indent(lines[n] || '');
+    let latest = null;
+    for (let j = n + 1; j < lines.length; j++) {
+        const l = lines[j];
+        if (!l.trim() || indent(l) <= base) break;
+        for (const m of l.matchAll(ISO_DATE)) {
+            if (!latest || m[1] > latest) latest = m[1];
+        }
+    }
+    return latest;
+}
+
 /** Newest first by date; undated after dated; otherwise stable. */
 function byDateDesc(a, b) {
     if (a.date && b.date) return b.date.localeCompare(a.date);
@@ -243,6 +264,8 @@ class OpenTasksView extends MarkdownRenderChild {
                 const n = item.position.start.line;
                 const t = parseTask(lines[n] || '');
                 if (!t) continue;
+                const later = blockDate(lines, n);
+                if (later && (!t.date || later > t.date)) t.date = later;
                 let heading = null;
                 for (const h of headings) {
                     if (h.position.start.line <= n) heading = h.heading;
@@ -448,3 +471,4 @@ module.exports = class OpenTasksPlugin extends Plugin {
 
 module.exports.parseTask = parseTask;
 module.exports.byDateDesc = byDateDesc;
+module.exports.blockDate = blockDate;
