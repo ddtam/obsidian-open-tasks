@@ -51,9 +51,13 @@
  * code blocks, so the view never reads its own block.
  */
 const {
-    Component, Plugin, MarkdownRenderer, MarkdownRenderChild, TFolder,
-    debounce,
+    Component, Plugin, PluginSettingTab, Setting, MarkdownRenderer,
+    MarkdownRenderChild, TFolder, debounce,
 } = require('obsidian');
+
+// Muted by default: the priority chip already carries the colour, so a
+// coloured bar on every row repeats it.
+const DEFAULT_SETTINGS = { priorityBars: false };
 
 const PRIORITY = /(^|\s)#p([1-3])\b/;
 const OWNER = /(^|\s)#(human|ai)\b/;
@@ -338,7 +342,9 @@ class OpenTasksView extends MarkdownRenderChild {
         if (status.dropped) li.addClass('is-dropped');
         const colour = t.priority < 4
             ? this.plugin.tagColour(`p${t.priority}`) : null;
-        if (colour) li.style.setProperty('--open-tasks-bar', colour);
+        if (colour && this.plugin.settings.priorityBars) {
+            li.style.setProperty('--open-tasks-bar', colour);
+        }
         const target = t.id ? `#^${t.id}`
             : t.heading ? `#${t.heading}` : '';
         const where = t.file.basename +
@@ -379,8 +385,34 @@ class OpenTasksView extends MarkdownRenderChild {
     }
 }
 
+class OpenTasksSettingTab extends PluginSettingTab {
+    constructor(app, plugin) {
+        super(app, plugin);
+        this.plugin = plugin;
+    }
+
+    display() {
+        const { containerEl } = this;
+        containerEl.empty();
+        new Setting(containerEl)
+            .setName('Priority colour bar')
+            .setDesc('Draw a bar in the priority tag\'s colour beside each ' +
+                'task. The priority chip shows the colour either way. ' +
+                'Open views redraw when the note is next rendered.')
+            .addToggle((tg) => tg
+                .setValue(this.plugin.settings.priorityBars)
+                .onChange(async (v) => {
+                    this.plugin.settings.priorityBars = v;
+                    await this.plugin.saveData(this.plugin.settings);
+                }));
+    }
+}
+
 module.exports = class OpenTasksPlugin extends Plugin {
-    onload() {
+    async onload() {
+        this.settings = Object.assign({}, DEFAULT_SETTINGS,
+            await this.loadData());
+        this.addSettingTab(new OpenTasksSettingTab(this.app, this));
         this.registerMarkdownCodeBlockProcessor('open-tasks',
             (source, el, ctx) => {
                 ctx.addChild(new OpenTasksView(this, el,

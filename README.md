@@ -39,7 +39,7 @@ One line carries four facts, each in one place:
 
 - A summary line: open, done and won't-do counts, and how many were done in the last 7 days, read from the last ISO date in each done line.
 - A progress bar of done over open plus done. Won't-do tasks count as neither, since dropping work is not progress on it.
-- Open tasks grouped by priority. Each row opens with a drawn status box whose mark mirrors the checkbox (empty, slash, chevron, bar, tick), then its priority and owner tags as chips, coloured by Pretty Properties; its left bar takes the priority colour. The box is an image with a label, not a checkbox, so it takes no clicks.
+- Open tasks grouped by priority. Each row opens with a drawn status box whose mark mirrors the checkbox (empty, slash, chevron, bar, tick), then its priority and owner tags as chips, coloured by Pretty Properties; a left bar in the priority colour is optional, off by default in the plugin's settings, since the chip already shows it. The box is an image with a label, not a checkbox, so it takes no clicks.
 - Each task's text rendered as markdown, with its trailing block id hidden, and a link under it to the task's block id, or its section heading when it has none.
 - Done and won't-do tasks in a collapsed list, newest first by the last date on the line, undated last. Won't-do tasks are struck through.
 - `No folder at "<path>"` for a path that does not exist, rather than an empty list.

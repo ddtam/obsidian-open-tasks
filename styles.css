@@ -41,7 +41,7 @@ ul.open-tasks-list {
 }
 
 .open-tasks-item {
-    border-left: 3px solid
+    border-left: 2px solid
         var(--open-tasks-bar, var(--background-modifier-border));
     padding: var(--size-4-1) 0 var(--size-4-1) var(--size-4-3);
     margin: var(--size-4-2) 0;
