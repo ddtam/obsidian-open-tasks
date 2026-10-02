@@ -31,9 +31,17 @@ One line carries four facts, each in one place:
 | owner | `#human` or `#ai`, whoever acts next; untagged is unassigned |
 | identity | a trailing `^task-<slug>` block id |
 
-**Status changes are dated** in the task's own text, appended rather than replacing: `Started 2026-10-02.`, `Deferred 2026-10-02 until ...`, `Done 2026-10-02: how.`, `Dropped 2026-10-02: why.` A status note sits on the task line or on an indented child line under it; the view dates a closed task by the latest ISO date across the line and its indented block.
+**Status changes are recorded as child bullets**, one per change, date first, then one of six verbs, oldest first:
 
-**A deferred task waits on the tasks it links to by block id**, written `after [[note#^task-x|...]]`. The view shows `Waiting on ...` while any is open and `ready to resume` once all are closed; the deferred task's own checkbox is left for whoever resumes it. Links from tasks in any other state are references, not dependencies.
+```
+- [x] **Re-run the gate on molecules** #p2 #ai ^task-gate-molecules
+    - 2026-10-01 started.
+    - 2026-10-02 done: clears 4 of 22 clone pairs.
+- [>] **Recover AML0051's FLT3 calls** #p3 #ai ^task-recover-aml0051-flt3
+    - 2026-10-02 deferred after [[FLT3 note#^task-lost-driver-repair|the repair]].
+```
+
+The verbs are `started`, `deferred`, `resumed`, `handed over`, `done` and `dropped`. The task line holds only the lead, tags and id, so a status change flips the checkbox and adds a child without rewriting the line. The view dates a task by its latest status note, and a deferred task's blockers are the task links in its latest `deferred` note; while the view's blocker shows `Waiting on ...` or `ready to resume`, the deferred task's own checkbox is left for whoever resumes it. A task still written in the older form, with its date inline, is dated by the latest date on its line or in its block until it is migrated.
 
 ## What it shows
 

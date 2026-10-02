@@ -27,11 +27,17 @@
  *   owner     #human or #ai, whoever acts next; untagged is unassigned
  *   identity  a trailing ^task-<slug> block id
  *
- * A deferred [>] task waits on the tasks it links to by block id; the
- * view says whether those are still open or all closed.
+ * Each status change is a child bullet under the task, date first and
+ * a fixed verb: `    - 2026-10-02 done: how.` The latest one dates the
+ * task. A deferred [>] task waits on the tasks its latest `deferred`
+ * note links to by block id; the view says whether those are still
+ * open or all closed.
  *
- * A deferred [>] task waits on the tasks it links to by block id; the
- * view says whether those are still open or all closed.
+ * Each status change is a child bullet under the task, date first and
+ * a fixed verb: `    - 2026-10-02 done: how.` The latest one dates the
+ * task. A deferred [>] task waits on the tasks its latest `deferred`
+ * note links to by block id; the view says whether those are still
+ * open or all closed.
  *
  * Open tasks are grouped by priority. Each task's text is rendered as
  * markdown, so its tags are real tag elements and Pretty Properties
@@ -183,25 +189,33 @@ function statusGlyph(ch, status) {
     return wrap;
 }
 
+// One status note: an indented child bullet, date first, then a fixed
+// verb. `    - 2026-10-02 done: clears 4 of 22.`
+const STATUS_NOTE = new RegExp('^\\s*(?:[-*+])\\s+(\\d{4}-\\d{2}-\\d{2})\\s+' +
+    '(started|deferred|resumed|handed over|done|dropped)\\b(.*)$');
+
 /**
- * The latest ISO date in a task's indented continuation: the lines
- * after it that are indented deeper, up to the first that is not. A
- * status note is written on the task line or on an indented child, and
- * both forms are in use, so a done task dated only on its child must
- * still be dated.
+ * The status notes under a task: the child bullets indented deeper than
+ * it, up to the first line that is not, that match STATUS_NOTE. Returns
+ * them oldest first as { date, verb, rest }, plus the latest ISO date
+ * anywhere in the block, which dates a task written in the older form
+ * that put the note inline or in free text.
  */
-function blockDate(lines, n) {
+function statusNotes(lines, n) {
     const indent = (s) => s.match(/^\s*/)[0].replace(/\t/g, '    ').length;
     const base = indent(lines[n] || '');
-    let latest = null;
+    const notes = [];
+    let anyDate = null;
     for (let j = n + 1; j < lines.length; j++) {
         const l = lines[j];
         if (!l.trim() || indent(l) <= base) break;
-        for (const m of l.matchAll(ISO_DATE)) {
-            if (!latest || m[1] > latest) latest = m[1];
+        const m = l.match(STATUS_NOTE);
+        if (m) notes.push({ date: m[1], verb: m[2], rest: m[3] });
+        for (const d of l.matchAll(ISO_DATE)) {
+            if (!anyDate || d[1] > anyDate) anyDate = d[1];
         }
     }
-    return latest;
+    return { notes, anyDate };
 }
 
 /** Newest first by date; undated after dated; otherwise stable. */
@@ -264,8 +278,23 @@ class OpenTasksView extends MarkdownRenderChild {
                 const n = item.position.start.line;
                 const t = parseTask(lines[n] || '');
                 if (!t) continue;
-                const later = blockDate(lines, n);
-                if (later && (!t.date || later > t.date)) t.date = later;
+                // A task is dated by its latest status note; a task still
+                // in the older inline form falls back to the latest date
+                // on its line or in its block. Blockers come from the
+                // latest `deferred` note when there is one, otherwise from
+                // the task line as before.
+                const { notes, anyDate } = statusNotes(lines, n);
+                if (notes.length) {
+                    t.date = notes[notes.length - 1].date;
+                    const def = [...notes].reverse()
+                        .find((s) => s.verb === 'deferred');
+                    if (def) {
+                        t.after = [...def.rest.matchAll(TASK_LINK)]
+                            .map((x) => x[1]);
+                    }
+                } else if (anyDate && (!t.date || anyDate > t.date)) {
+                    t.date = anyDate;
+                }
                 let heading = null;
                 for (const h of headings) {
                     if (h.position.start.line <= n) heading = h.heading;
@@ -471,4 +500,4 @@ module.exports = class OpenTasksPlugin extends Plugin {
 
 module.exports.parseTask = parseTask;
 module.exports.byDateDesc = byDateDesc;
-module.exports.blockDate = blockDate;
+module.exports.statusNotes = statusNotes;
