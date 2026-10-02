@@ -1,0 +1,12 @@
+{
+  "name": "obsidian-open-tasks",
+  "version": "0.0.0",
+  "description": "A read-only, priority-grouped view of the tasks in a folder of notes.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node -e \"console.log('no build step: main.js is plain JS at the repo root')\"",
+    "brat:build": "npm run build && node scripts/brat-publish.mjs",
+    "brat:release": "node scripts/brat-release.mjs"
+  }
+}

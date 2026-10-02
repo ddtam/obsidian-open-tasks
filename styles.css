@@ -1,0 +1,66 @@
+/* Open tasks view. The priority chip is a real tag element, so Pretty
+   Properties colours it; the row bar takes the same colour. */
+.open-tasks {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    padding: var(--size-4-3) var(--size-4-4);
+}
+
+.open-tasks-summary {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+}
+
+.open-tasks-progress {
+    height: 6px;
+    margin: var(--size-4-2) 0 var(--size-4-3);
+    border-radius: 3px;
+    background: var(--background-modifier-border);
+    overflow: hidden;
+}
+
+.open-tasks-progress-done {
+    height: 100%;
+    background: var(--color-green);
+}
+
+.open-tasks-group-title,
+.open-tasks-done > summary {
+    font-weight: var(--font-semibold);
+    margin: var(--size-4-3) 0 var(--size-4-1);
+}
+
+.open-tasks-done > summary {
+    cursor: pointer;
+}
+
+ul.open-tasks-list {
+    list-style: none;
+    padding-inline-start: 0;
+    margin: 0;
+}
+
+.open-tasks-item {
+    border-left: 3px solid
+        var(--open-tasks-bar, var(--background-modifier-border));
+    padding: var(--size-4-1) 0 var(--size-4-1) var(--size-4-3);
+    margin: var(--size-4-2) 0;
+}
+
+.open-tasks-item > p {
+    margin: 0;
+}
+
+.open-tasks-item > p.open-tasks-where {
+    color: var(--text-faint);
+    font-size: var(--font-ui-smaller);
+}
+
+.open-tasks-item.is-done > p.open-tasks-text {
+    color: var(--text-muted);
+}
+
+.open-tasks-error,
+.open-tasks-empty {
+    color: var(--text-muted);
+}
