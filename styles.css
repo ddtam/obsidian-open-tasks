@@ -105,3 +105,13 @@ ul.open-tasks-list {
 .open-tasks-empty {
     color: var(--text-muted);
 }
+
+/* Dependency state, computed from linked blocker tasks */
+.open-tasks-deps {
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+}
+
+.open-tasks-deps.is-ready {
+    color: var(--color-green);
+}

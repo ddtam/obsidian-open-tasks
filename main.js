@@ -27,6 +27,12 @@
  *   owner     #human or #ai, whoever acts next; untagged is unassigned
  *   identity  a trailing ^task-<slug> block id
  *
+ * A deferred [>] task waits on the tasks it links to by block id; the
+ * view says whether those are still open or all closed.
+ *
+ * A deferred [>] task waits on the tasks it links to by block id; the
+ * view says whether those are still open or all closed.
+ *
  * Open tasks are grouped by priority. Each task's text is rendered as
  * markdown, so its tags are real tag elements and Pretty Properties
  * colours them through its own post-processor. The priority and owner
@@ -53,7 +59,10 @@ const PRIORITY = /(^|\s)#p([1-3])\b/;
 const OWNER = /(^|\s)#(human|ai)\b/;
 const BLOCK_ID = /\s\^([A-Za-z0-9-]+)\s*$/;
 const TASK_PREFIX = /^\s*(?:[-*+]|\d+[.)])\s+\[(.)\]\s*/;
-const ISO_DATE = /\b(\d{4}-\d{2}-\d{2})\b/;
+const ISO_DATE = /\b(\d{4}-\d{2}-\d{2})\b/g;
+// A link to another task's block id, which is how a dependency is
+// written: `after [[note#^task-x|...]]`.
+const TASK_LINK = /\[\[[^\]|#]*#\^(task-[A-Za-z0-9-]+)/g;
 const NAMED = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue',
     'purple', 'pink'];
 
@@ -120,14 +129,18 @@ function parseTask(line) {
     let p, owner;
     [text, p] = cut(text, PRIORITY);
     [text, owner] = cut(text, OWNER);
-    const d = text.match(ISO_DATE);
+    // The last date on the line is the latest status note: a task that
+    // reads "Started 2026-09-30. Done 2026-10-02" closed on the 2nd.
+    const dates = text.match(ISO_DATE) || [];
+    const after = [...text.matchAll(TASK_LINK)].map((x) => x[1]);
     return {
         state: m[1],
         text: text.trim(),
         id,
         priority: p ? Number(p) : 4,
         owner: owner || null,
-        date: d ? d[1] : null,
+        date: dates.length ? dates[dates.length - 1] : null,
+        after,
     };
 }
 
@@ -226,8 +239,6 @@ class OpenTasksView extends MarkdownRenderChild {
                 const n = item.position.start.line;
                 const t = parseTask(lines[n] || '');
                 if (!t) continue;
-                if (this.withId && !t.id) continue;
-                if (this.owner && t.owner !== this.owner) continue;
                 let heading = null;
                 for (const h of headings) {
                     if (h.position.start.line <= n) heading = h.heading;
@@ -236,7 +247,18 @@ class OpenTasksView extends MarkdownRenderChild {
                 tasks.push(Object.assign(t, { file, line: n, heading }));
             }
         }
-        return tasks;
+        // Dependencies resolve against every task in scope, before the
+        // owner filter, since a #human task can wait on an #ai one.
+        const byId = new Map(tasks.filter((t) => t.id)
+            .map((t) => [t.id, t]));
+        // Only a deferred task's links are blockers; a link from any
+        // other task is a reference, so it never reads as a dependency.
+        for (const t of tasks) {
+            t.blockers = t.state !== '>' ? [] : t.after
+                .map((id) => byId.get(id)).filter((b) => b && b !== t);
+        }
+        return tasks.filter((t) => (!this.withId || t.id) &&
+            (!this.owner || t.owner === this.owner));
     }
 
     async render() {
@@ -332,6 +354,28 @@ class OpenTasksView extends MarkdownRenderChild {
             paras[0].prepend(statusGlyph(t.state, status));
         }
         if (paras[1]) paras[1].addClass('open-tasks-where');
+        if (status.open && t.blockers.length) this.dependency(li, t);
+    }
+
+    /**
+     * Computed, never stored: whether the tasks this one links to as
+     * blockers are still open. The task's own status is left to whoever
+     * resumes it, so "ready to resume" is a prompt, not a change.
+     */
+    dependency(li, t) {
+        const waiting = t.blockers.filter((b) => statusOf(b.state).open);
+        const el = li.createDiv({ cls: 'open-tasks-deps' });
+        if (!waiting.length) {
+            el.addClass('is-ready');
+            el.setText(t.blockers.length === 1
+                ? 'Blocker closed: ready to resume'
+                : `All ${t.blockers.length} blockers closed: ready to resume`);
+            return;
+        }
+        el.setText(`Waiting on ${waiting.length === 1 ? '' :
+            `${waiting.length} tasks: `}` + waiting.map((b) =>
+            b.text.replace(/\*\*/g, '').split(/[,.]/)[0].trim())
+            .join('; '));
     }
 }
 

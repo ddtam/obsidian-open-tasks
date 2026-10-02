@@ -31,13 +31,17 @@ One line carries four facts, each in one place:
 | owner | `#human` or `#ai`, whoever acts next; untagged is unassigned |
 | identity | a trailing `^task-<slug>` block id |
 
+**Status changes are dated** in the task's own text, appended rather than replacing: `Started 2026-10-02.`, `Deferred 2026-10-02 until ...`, `Done 2026-10-02: how.`, `Dropped 2026-10-02: why.` The view dates a closed task by the last ISO date on its line.
+
+**A deferred task waits on the tasks it links to by block id**, written `after [[note#^task-x|...]]`. The view shows `Waiting on ...` while any is open and `ready to resume` once all are closed; the deferred task's own checkbox is left for whoever resumes it. Links from tasks in any other state are references, not dependencies.
+
 ## What it shows
 
-- A summary line: open, done and won't-do counts, and how many were done in the last 7 days, read from the first ISO date in each done line.
+- A summary line: open, done and won't-do counts, and how many were done in the last 7 days, read from the last ISO date in each done line.
 - A progress bar of done over open plus done. Won't-do tasks count as neither, since dropping work is not progress on it.
 - Open tasks grouped by priority. Each row opens with a drawn status box whose mark mirrors the checkbox (empty, slash, chevron, bar, tick), then its priority and owner tags as chips, coloured by Pretty Properties; its left bar takes the priority colour. The box is an image with a label, not a checkbox, so it takes no clicks.
 - Each task's text rendered as markdown, with its trailing block id hidden, and a link under it to the task's block id, or its section heading when it has none.
-- Done and won't-do tasks in a collapsed list, newest first by date, undated last. Won't-do tasks are struck through.
+- Done and won't-do tasks in a collapsed list, newest first by the last date on the line, undated last. Won't-do tasks are struck through.
 - `No folder at "<path>"` for a path that does not exist, rather than an empty list.
 
 ## What it does not do
