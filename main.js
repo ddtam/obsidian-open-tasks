@@ -31,7 +31,7 @@
  * markdown, so its tags are real tag elements and Pretty Properties
  * colours them through its own post-processor. The priority and owner
  * tags lead each row as chips, the row's left bar takes the priority
- * colour, and in-progress and deferred tasks carry a badge. Done and
+ * colour, and a status glyph opens each row. Done and
  * won't-do tasks sit in a collapsed list, newest first by the first
  * ISO date in the line, under a progress bar that counts done tasks
  * only, since dropped work is not progress.
@@ -57,16 +57,20 @@ const ISO_DATE = /\b(\d{4}-\d{2}-\d{2})\b/;
 const NAMED = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue',
     'purple', 'pink'];
 
-// Status from the checkbox character. Anything not listed is open,
-// shown with its character as the badge.
+// Status from the checkbox character. Each draws a box whose mark
+// mirrors the markdown: nothing for [ ], a slash for [/], a chevron for
+// [>], a bar for [-], a tick for [x]. Anything not listed is open and
+// shows its character inside the box.
 const STATUS = {
-    ' ': { open: true, badge: null },
-    '/': { open: true, badge: 'in progress' },
-    '>': { open: true, badge: 'deferred' },
-    '-': { open: false, badge: "won't do", dropped: true },
-    'x': { open: false, badge: null },
-    'X': { open: false, badge: null },
+    ' ': { open: true, label: 'to do', mark: null },
+    '/': { open: true, label: 'in progress', mark: 'M5 11 L11 5' },
+    '>': { open: true, label: 'deferred', mark: 'M6.5 5 L9.5 8 L6.5 11' },
+    '-': { open: false, label: "won't do", mark: 'M5 8 H11',
+        dropped: true },
+    'x': { open: false, label: 'done', mark: 'M4.8 8.2 L7 10.4 L11.2 5.6' },
+    'X': { open: false, label: 'done', mark: 'M4.8 8.2 L7 10.4 L11.2 5.6' },
 };
+const SVG_NS = 'http://www.w3.org/2000/svg';
 const GROUPS = [
     { p: 1, label: 'Priority 1' },
     { p: 2, label: 'Priority 2' },
@@ -76,7 +80,7 @@ const GROUPS = [
 const WEEK_MS = 7 * 24 * 3600 * 1000;
 
 function statusOf(ch) {
-    return STATUS[ch] || { open: true, badge: `[${ch}]` };
+    return STATUS[ch] || { open: true, label: `[${ch}]`, glyph: ch };
 }
 
 function parseConfig(source) {
@@ -125,6 +129,41 @@ function parseTask(line) {
         owner: owner || null,
         date: d ? d[1] : null,
     };
+}
+
+/**
+ * A drawn, non-interactive status box. It is an image with a label, not
+ * a checkbox input, so it takes no pointer and cannot be mistaken for a
+ * control: the task is changed in its own note.
+ */
+function statusGlyph(ch, status) {
+    const wrap = createSpan({ cls: 'open-tasks-status' });
+    wrap.addClass(`is-${status.label.replace(/[^a-z]+/g, '-')}`);
+    wrap.setAttr('role', 'img');
+    wrap.setAttr('aria-label', status.label);
+    wrap.setAttr('title', status.label);
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 16 16');
+    const box = document.createElementNS(SVG_NS, 'rect');
+    for (const [k, v] of Object.entries({ x: '2', y: '2', width: '12',
+        height: '12', rx: '2.5' })) box.setAttribute(k, v);
+    svg.appendChild(box);
+    if (status.mark) {
+        const mark = document.createElementNS(SVG_NS, 'path');
+        mark.setAttribute('d', status.mark);
+        mark.setAttribute('class', 'open-tasks-status-mark');
+        svg.appendChild(mark);
+    } else if (status.glyph) {
+        const txt = document.createElementNS(SVG_NS, 'text');
+        for (const [k, v] of Object.entries({ x: '8', y: '11.5',
+            'text-anchor': 'middle', 'font-size': '8' })) {
+            txt.setAttribute(k, v);
+        }
+        txt.textContent = status.glyph;
+        svg.appendChild(txt);
+    }
+    wrap.appendChild(svg);
+    return wrap;
 }
 
 /** Newest first by date; undated after dated; otherwise stable. */
@@ -290,11 +329,7 @@ class OpenTasksView extends MarkdownRenderChild {
         const paras = li.querySelectorAll(':scope > p');
         if (paras[0]) {
             paras[0].addClass('open-tasks-text');
-            if (status.badge) {
-                const badge = createSpan({ cls: 'open-tasks-badge',
-                    text: status.badge });
-                paras[0].prepend(badge);
-            }
+            paras[0].prepend(statusGlyph(t.state, status));
         }
         if (paras[1]) paras[1].addClass('open-tasks-where');
     }
