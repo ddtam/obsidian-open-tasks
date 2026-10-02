@@ -1,7 +1,7 @@
 {
   "id": "open-tasks",
   "name": "Open Tasks",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "minAppVersion": "1.5.0",
   "description": "A read-only view of the tasks in a folder of notes, grouped by priority tag (#p1 to #p3), with tags rendered and coloured and a progress bar over done tasks. Each task links back to the note that holds it.",
   "author": "Derek",
