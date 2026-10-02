@@ -5,28 +5,49 @@ A read-only view of the tasks in a folder of Obsidian notes, written as a code b
 ````
 ```open-tasks
 path: Projects/Tapestri Clone Caller
+tasks: with-id
+owner: human
 ```
 ````
 
-`path` is a folder; without it the view covers the folder of the note holding the block.
+Every line is optional:
+
+- `path`: the folder to read, including subfolders. Without it, the folder of the note holding the block. `path: Projects` covers every project at once.
+- `tasks: with-id`: count only checkboxes ending in a `^block-id`. Without it every checkbox counts, including checklists such as reading-path ticks.
+- `owner: human` or `owner: ai`: keep only tasks with that owner tag. Without it every task is shown, each with its owner chip.
+
+## The task line
+
+One line carries four facts, each in one place:
+
+```
+- [/] **Add a called-fraction floor to build_clone_tree()**, ... #p2 #ai ^task-called-fraction-floor
+```
+
+| fact | written as |
+|---|---|
+| status | the checkbox: `[ ]` to do, `[/]` in progress, `[>]` deferred, `[-]` won't do, `[x]` done |
+| priority | `#p1`, `#p2` or `#p3`, as in Todoist; untagged sorts last |
+| owner | `#human` or `#ai`, whoever acts next; untagged is unassigned |
+| identity | a trailing `^task-<slug>` block id |
 
 ## What it shows
 
-- A summary line, `17 open, 5 done, in <path>`, and a progress bar of done over all tasks.
-- Open tasks grouped by priority tag, `#p1` to `#p3` as in Todoist, then unprioritised. Each row leads with its priority tag as a chip, and its left bar takes the tag's colour from Pretty Properties.
-- Each task's text rendered as markdown, so its tags are real tags and Pretty Properties colours them. A trailing `^block-id` is hidden.
-- A link under each task to where it lives: its block id if it has one, otherwise its section heading.
-- Done and cancelled tasks (`[x]`, `[X]`, `[-]`) in a collapsed list. `[>]` and `[/]` count as open.
+- A summary line: open, done and won't-do counts, and how many were done in the last 7 days, read from the first ISO date in each done line.
+- A progress bar of done over open plus done. Won't-do tasks count as neither, since dropping work is not progress on it.
+- Open tasks grouped by priority. Each row leads with its priority and owner tags as chips, coloured by Pretty Properties, and its left bar takes the priority colour. In-progress, deferred and unrecognised states carry a badge.
+- Each task's text rendered as markdown, with its trailing block id hidden, and a link under it to the task's block id, or its section heading when it has none.
+- Done and won't-do tasks in a collapsed list, newest first by date, undated last. Won't-do tasks are struck through and badged.
 - `No folder at "<path>"` for a path that does not exist, rather than an empty list.
 
 ## What it does not do
 
-- **No checkboxes.** The view never edits a note; tick a task in its own note. A checkbox here would be a second place to hold a task's state.
-- **No sorting beyond priority.** Within a group, tasks are in note order, README first, then by path, and in line order within a note.
+- **No checkboxes.** The view never edits a note; change a task in its own note. A checkbox here would be a second place to hold a task's state.
+- **No sorting beyond priority** for open tasks. Within a group they are in note order, README first, then by path, and in line order within a note, which is the order their author wrote them in.
 
 ## Conventions it assumes
 
-The task convention is in the ai_brain vault at `Meta/Open tasks have one home, and one view per project.md`: one checkbox per task, a `^task-<slug>` block id at the end of the line, and a priority tag before it.
+The task convention is in the ai_brain vault at `Meta/Open tasks have one home, and one view per project.md`.
 
 ## Releasing
 
