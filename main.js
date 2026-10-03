@@ -72,7 +72,7 @@ const TASK_PREFIX = /^\s*(?:[-*+]|\d+[.)])\s+\[(.)\]\s*/;
 const ISO_DATE = /\b(\d{4}-\d{2}-\d{2})\b/g;
 // A link to another task's block id, which is how a dependency is
 // written: `after [[note#^task-x|...]]`.
-const TASK_LINK = /\[\[[^\]|#]*#\^(task-[A-Za-z0-9-]+)/g;
+const TASK_LINK = /\[\[([^\]|#]*)#\^(task-[A-Za-z0-9-]+)/g;
 const NAMED = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue',
     'purple', 'pink'];
 
@@ -142,7 +142,7 @@ function parseTask(line) {
     // The last date on the line is the latest status note: a task that
     // reads "Started 2026-09-30. Done 2026-10-02" closed on the 2nd.
     const dates = text.match(ISO_DATE) || [];
-    const after = [...text.matchAll(TASK_LINK)].map((x) => x[1]);
+    const after = linksIn(text);
     return {
         state: m[1],
         text: text.trim(),
@@ -218,6 +218,12 @@ function statusNotes(lines, n) {
     return { notes, anyDate };
 }
 
+/** Task links in `text`, as { path, id }; an empty path is this note. */
+function linksIn(text) {
+    return [...text.matchAll(TASK_LINK)]
+        .map((x) => ({ path: x[1], id: x[2] }));
+}
+
 /** Newest first by date; undated after dated; otherwise stable. */
 function byDateDesc(a, b) {
     if (a.date && b.date) return b.date.localeCompare(a.date);
@@ -253,7 +259,8 @@ class OpenTasksView extends MarkdownRenderChild {
     }
 
     covers(path) {
-        return this.root === '' || path.startsWith(this.root + '/');
+        return this.root === '' || path.startsWith(this.root + '/') ||
+            (this.external && this.external.has(path));
     }
 
     async collect() {
@@ -289,8 +296,7 @@ class OpenTasksView extends MarkdownRenderChild {
                     const def = [...notes].reverse()
                         .find((s) => s.verb === 'deferred');
                     if (def) {
-                        t.after = [...def.rest.matchAll(TASK_LINK)]
-                            .map((x) => x[1]);
+                        t.after = linksIn(def.rest);
                     }
                 } else if (anyDate && (!t.date || anyDate > t.date)) {
                     t.date = anyDate;
@@ -309,9 +315,28 @@ class OpenTasksView extends MarkdownRenderChild {
             .map((t) => [t.id, t]));
         // Only a deferred task's links are blockers; a link from any
         // other task is a reference, so it never reads as a dependency.
+        // A blocker may live in another project, written as a full-path
+        // link: resolve it through Obsidian's link resolution, read its
+        // line, and watch its note so a closure there redraws this view.
+        this.external = new Set();
+        for (const t of tasks) {
+            if (t.state !== '>') continue;
+            for (const a of t.after) {
+                if (byId.has(a.id)) continue;
+                const f = app.metadataCache.getFirstLinkpathDest(
+                    a.path, t.file.path);
+                if (!f) continue;
+                this.external.add(f.path);
+                const ls = (await app.vault.cachedRead(f)).split('\n');
+                const re = new RegExp(`\\s\\^${a.id}\\s*$`);
+                const i = ls.findIndex((l) => re.test(l));
+                const b = i < 0 ? null : parseTask(ls[i]);
+                if (b) byId.set(a.id, Object.assign(b, { file: f, line: i }));
+            }
+        }
         for (const t of tasks) {
             t.blockers = t.state !== '>' ? [] : t.after
-                .map((id) => byId.get(id)).filter((b) => b && b !== t);
+                .map((a) => byId.get(a.id)).filter((b) => b && b !== t);
         }
         return tasks.filter((t) => (!this.withId || t.id) &&
             (!this.owner || t.owner === this.owner));
