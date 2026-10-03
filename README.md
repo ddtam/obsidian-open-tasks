@@ -41,7 +41,7 @@ One line carries four facts, each in one place:
     - 2026-10-02 deferred after [[FLT3 note#^task-lost-driver-repair|the repair]].
 ```
 
-The verbs are `started`, `deferred`, `resumed`, `handed over`, `done` and `dropped`. The task line holds only the lead, tags and id, so a status change flips the checkbox and adds a child without rewriting the line. The view dates a task by its latest status note, and a deferred task's blockers are the task links in its latest `deferred` note; while the view's blocker shows `Waiting on ...` or `ready to resume`, the deferred task's own checkbox is left for whoever resumes it. A task still written in the older form, with its date inline, is dated by the latest date on its line or in its block until it is migrated.
+The verbs are `started`, `deferred`, `resumed`, `handed over`, `done` and `dropped`. The task line holds only the lead, tags and id, so a status change flips the checkbox and adds a child without rewriting the line. The view dates a task by its latest status note, and a deferred task's blockers are the task links in its latest `deferred` note, in this project or another (a full-path link such as `[[Projects/Other/README#^task-x|...]]` is resolved through Obsidian's link resolution, and the view redraws when that note changes); while the view's blocker shows `Waiting on ...` or `ready to resume`, the deferred task's own checkbox is left for whoever resumes it. A task still written in the older form, with its date inline, is dated by the latest date on its line or in its block until it is migrated.
 
 ## What it shows
 
