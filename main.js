@@ -597,6 +597,9 @@ class OpenTasksView extends MarkdownRenderChild {
         await vault.process(t.file, (data) => {
             // Every note the view writes says so, so a bare close reads as
             // Derek's click rather than a session that skipped the how.
+            // vault-lint's section 3e reads this template out of the
+            // setStatus call below; keep it here, or tell egcl-ai, since
+            // moving it makes that check report NOSUFFIX.
             const next = setStatus(data, t.id, ch, `${verb} in the task view`,
                                    note, today(), owner);
             if (next === null) return data;
