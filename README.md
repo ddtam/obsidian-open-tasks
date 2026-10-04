@@ -27,7 +27,7 @@ One line carries four facts, each in one place:
 | fact | written as |
 |---|---|
 | status | the checkbox: `[ ]` to do, `[/]` in progress, `[>]` waiting, `[-]` won't do, `[x]` done |
-| priority | `#p1`, `#p2` or `#p3`, as in Todoist; no tag is p4, the lowest, and is listed as Priority 4 |
+| priority | `#p1` now, `#p2` this phase, `#p3` when convenient, `#p4` someday; always written, and an untagged task is listed under Not prioritised |
 | owner | `#human` or `#ai`, whoever acts next; untagged is unassigned |
 | identity | a trailing `^task-<slug>` block id |
 

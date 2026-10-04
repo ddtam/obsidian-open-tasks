@@ -94,8 +94,10 @@ const GROUPS = [
     { p: 1, label: 'Priority 1' },
     { p: 2, label: 'Priority 2' },
     { p: 3, label: 'Priority 3' },
-    // No tag is p4, the lowest, as in Todoist, not "not yet decided".
     { p: 4, label: 'Priority 4' },
+    // No tag means not yet prioritised, since #p4 became explicit on
+    // 2026-10-04; it sorts last so it stands out as a decision owed.
+    { p: 5, label: 'Not prioritised' },
 ];
 const WEEK_MS = 7 * 24 * 3600 * 1000;
 
@@ -148,7 +150,7 @@ function parseTask(line) {
         state: m[1],
         text: text.trim(),
         id,
-        priority: p ? Number(p) : 4,
+        priority: p ? Number(p) : 5,
         owner: owner || null,
         date: dates.length ? dates[dates.length - 1] : null,
         after,
@@ -420,7 +422,7 @@ class OpenTasksView extends MarkdownRenderChild {
         const li = ul.createEl('li', { cls: 'open-tasks-item' });
         if (!status.open) li.addClass('is-closed');
         if (status.dropped) li.addClass('is-dropped');
-        const colour = t.priority < 4
+        const colour = t.priority < 5
             ? this.plugin.tagColour(`p${t.priority}`) : null;
         if (colour && this.plugin.settings.priorityBars) {
             li.style.setProperty('--open-tasks-bar', colour);
@@ -429,7 +431,7 @@ class OpenTasksView extends MarkdownRenderChild {
             : t.heading ? `#${t.heading}` : '';
         const where = t.file.basename +
             (t.heading ? ` › ${t.heading}` : '');
-        const chips = (t.priority < 4 ? `#p${t.priority} ` : '') +
+        const chips = (t.priority < 5 ? `#p${t.priority} ` : '') +
             (t.owner ? `#${t.owner} ` : '');
         const link = `[[${t.file.path}${target}|${where}]]`;
         await MarkdownRenderer.render(this.plugin.app,
