@@ -237,6 +237,14 @@ function linksIn(text) {
  * appended after the task's existing children, never rewriting them.
  * Pure, so it is tested outside Obsidian. Returns null when the task's
  * line cannot be found, so the caller writes nothing.
+ *
+ * KEEP IT PURE AND EXPORTED. vault-lint's shell suite (section 3e,
+ * tests/open_tasks_notes.js in ~/.claude/vault-lint) loads this file
+ * with an `obsidian` stub, takes the verbs from the this.change() calls,
+ * writes each note with this function and checks it against the
+ * linter's own matcher. If this ever needs the app or the vault, tell
+ * egcl-ai first, so the check gets a new seam instead of reporting
+ * NOLOAD on an otherwise sound refactor.
  */
 function setStatus(data, id, ch, verb, note, date, owner) {
     const lines = data.split('\n');
