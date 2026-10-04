@@ -94,7 +94,8 @@ const GROUPS = [
     { p: 1, label: 'Priority 1' },
     { p: 2, label: 'Priority 2' },
     { p: 3, label: 'Priority 3' },
-    { p: 4, label: 'Unprioritised' },
+    // No tag is p4, the lowest, as in Todoist, not "not yet decided".
+    { p: 4, label: 'Priority 4' },
 ];
 const WEEK_MS = 7 * 24 * 3600 * 1000;
 
