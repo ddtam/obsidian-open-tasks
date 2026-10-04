@@ -587,8 +587,10 @@ class OpenTasksView extends MarkdownRenderChild {
         const vault = this.plugin.app.vault;
         let before = null, after = null;
         await vault.process(t.file, (data) => {
-            const next = setStatus(data, t.id, ch, verb, note, today(),
-                                   owner);
+            // Every note the view writes says so, so a bare close reads as
+            // Derek's click rather than a session that skipped the how.
+            const next = setStatus(data, t.id, ch, `${verb} in the task view`,
+                                   note, today(), owner);
             if (next === null) return data;
             before = data; after = next;
             return next;

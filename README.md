@@ -56,10 +56,10 @@ The verbs are `started`, `waiting` (named `deferred` before 2026-10-03, still re
 
 With **Let me mark my #human tasks** on in the plugin's settings (off by default), an open `#human` task's status box can be clicked:
 
-- a task a session handed to you, whose latest handover note says `handed over to #human`, is **handed back**: the line is retagged `#ai` and `- <date> handed over to #ai.` is added, since the session still has work on it;
-- a task that was yours from the start is **marked done**: `[x]` and `- <date> done.`
+- a task a session handed to you, whose latest handover note says `handed over to #human`, is **handed back**: the line is retagged `#ai` and `- <date> handed over to #ai in the task view.` is added, since the session still has work on it;
+- a task that was yours from the start is **marked done**: `[x]` and `- <date> done in the task view.`
 
-Right-click, or long-press on a phone, for: hand back with a note, done, done with a note, started, and won't do (which asks for a reason). Each is one atomic write to the task's own note, followed by a notice with **Undo**. `#ai` tasks are never clickable.
+Right-click, or long-press on a phone, for: hand back with a note, done, done with a note, started, and won't do (which asks for a reason). Each is one atomic write to the task's own note, followed by a notice with **Undo**. Every note the view writes ends its verb with "in the task view", so a close that records no detail reads as a click rather than as a session that skipped it. `#ai` tasks are never clickable.
 
 ## What it does not do
 
