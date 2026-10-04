@@ -48,22 +48,26 @@
  * ISO date in the line, under a progress bar that counts done tasks
  * only, since dropped work is not progress.
  *
- * The view draws no checkboxes. In ai_brain a tap on a checkbox is an
- * edit to a note, and a checkbox here would be a second place to hold
- * a task's state. Each row links to the task's block id instead, or to
- * its section heading when it has no id.
+ * The view draws no checkboxes; each row links to the task's block id,
+ * or to its section heading when it has none. One exception, behind a
+ * setting that is off by default: an open #human task's status box can
+ * be clicked, to mark it done, or, if a session handed it to Derek,
+ * to hand it back to #ai. Either writes the convention's own form in
+ * the task's note, a checkbox or owner change plus a dated child note,
+ * so the note stays the one home of the task's state.
  *
  * Tasks come from the metadata cache's listItems, which already exclude
  * code blocks, so the view never reads its own block.
  */
 const {
     Component, Plugin, PluginSettingTab, Setting, MarkdownRenderer,
-    MarkdownRenderChild, TFolder, debounce,
+    MarkdownRenderChild, TFolder, debounce, Menu, Modal, Notice,
+    TextComponent, ButtonComponent,
 } = require('obsidian');
 
 // Muted by default: the priority chip already carries the colour, so a
 // coloured bar on every row repeats it.
-const DEFAULT_SETTINGS = { priorityBars: false };
+const DEFAULT_SETTINGS = { priorityBars: false, humanTicks: false };
 
 const PRIORITY = /(^|\s)#p([1-4])\b/;
 const OWNER = /(^|\s)#(human|ai)\b/;
@@ -227,6 +231,70 @@ function linksIn(text) {
         .map((x) => ({ path: x[1], id: x[2] }));
 }
 
+/**
+ * Change one task's status in a note's text, the convention's way: the
+ * checkbox character changes in place and one dated child note is
+ * appended after the task's existing children, never rewriting them.
+ * Pure, so it is tested outside Obsidian. Returns null when the task's
+ * line cannot be found, so the caller writes nothing.
+ */
+function setStatus(data, id, ch, verb, note, date, owner) {
+    const lines = data.split('\n');
+    const idRe = new RegExp(`\\s\\^${id}\\s*$`);
+    const n = lines.findIndex((l) => TASK_PREFIX.test(l) && idRe.test(l));
+    if (n < 0) return null;
+    if (ch) lines[n] = lines[n].replace(/\[(.)\]/, `[${ch}]`);
+    // A handover retags the line's owner in place, beside its note.
+    if (owner) {
+        lines[n] = lines[n].replace(/(^|\s)#(human|ai)\b/, `$1#${owner}`);
+    }
+    const indentOf = (s) => s.match(/^[ \t]*/)[0];
+    const width = (s) => indentOf(s).replace(/\t/g, '    ').length;
+    const base = width(lines[n]);
+    let last = n;
+    let childIndent = indentOf(lines[n]) + '    ';
+    for (let j = n + 1; j < lines.length; j++) {
+        if (!lines[j].trim() || width(lines[j]) <= base) break;
+        if (last === n) childIndent = indentOf(lines[j]);
+        last = j;
+    }
+    const text = (note || '').trim().replace(/\.$/, '');
+    lines.splice(last + 1, 0,
+        `${childIndent}- ${date} ${verb}${text ? ': ' + text : ''}.`);
+    return lines.join('\n');
+}
+
+function today() {
+    // The local calendar date, as the vault's notes are dated.
+    return new Date().toLocaleDateString('en-CA');
+}
+
+/** A one-line text prompt; resolves to the text, or null if cancelled. */
+function askLine(app, title, placeholder, required) {
+    return new Promise((resolve) => {
+        const m = new Modal(app);
+        let value = '';
+        let done = false;
+        m.titleEl.setText(title);
+        const input = new TextComponent(m.contentEl)
+            .setPlaceholder(placeholder)
+            .onChange((v) => { value = v; });
+        input.inputEl.style.width = '100%';
+        const submit = () => {
+            if (required && !value.trim()) return;
+            done = true; m.close(); resolve(value);
+        };
+        input.inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submit();
+        });
+        new ButtonComponent(m.contentEl).setButtonText('OK').setCta()
+            .onClick(submit);
+        m.onClose = () => { if (!done) resolve(null); };
+        m.open();
+        input.inputEl.focus();
+    });
+}
+
 /** Newest first by date; undated after dated; otherwise stable. */
 function byDateDesc(a, b) {
     if (a.date && b.date) return b.date.localeCompare(a.date);
@@ -294,6 +362,11 @@ class OpenTasksView extends MarkdownRenderChild {
                 // latest `deferred` note when there is one, otherwise from
                 // the task line as before.
                 const { notes, anyDate } = statusNotes(lines, n);
+                // Whether this task reached #human by a handover from a
+                // session, so finishing Derek's part hands it back.
+                const ho = [...notes].reverse()
+                    .find((s) => s.verb === 'handed over');
+                t.handedToHuman = !!ho && /^\s*to #human\b/.test(ho.rest);
                 if (notes.length) {
                     t.date = notes[notes.length - 1].date;
                     const def = [...notes].reverse()
@@ -439,10 +512,109 @@ class OpenTasksView extends MarkdownRenderChild {
         const paras = li.querySelectorAll(':scope > p');
         if (paras[0]) {
             paras[0].addClass('open-tasks-text');
-            paras[0].prepend(statusGlyph(t.state, status));
+            const glyph = statusGlyph(t.state, status);
+            paras[0].prepend(glyph);
+            if (this.plugin.settings.humanTicks && t.owner === 'human' &&
+                status.open && t.id) {
+                this.actionable(glyph, t);
+            }
         }
         if (paras[1]) paras[1].addClass('open-tasks-where');
         if (status.open && t.blockers.length) this.dependency(li, t);
+    }
+
+    /**
+     * Derek's own #human tasks only, behind a setting that is off by
+     * default: a click marks one done, and a right-click or long-press
+     * offers done with a note, started, or won't do with a reason. Each
+     * writes the convention's form, a checkbox change and a dated child
+     * note, in one atomic write, with an Undo for a mis-tap.
+     */
+    actionable(glyph, t) {
+        glyph.addClass('is-actionable');
+        // A task a session handed to Derek goes back to #ai when his part
+        // is done, since the session still has work on it; a task that
+        // was his from the start is simply done.
+        const back = t.handedToHuman;
+        glyph.setAttr('title', `${t.state === '/' ? 'in progress' :
+            'to do'}: click to ${back ? 'hand back to #ai' : 'mark done'}` +
+            '; right-click for more');
+        glyph.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            if (back) this.change(t, null, 'handed over to #ai', '', 'ai');
+            else this.change(t, 'x', 'done', '');
+        });
+        glyph.addEventListener('contextmenu', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            const app = this.plugin.app;
+            const menu = new Menu();
+            menu.addItem((i) => i.setTitle('My part is done: hand back to #ai')
+                .setIcon('undo-2')
+                .onClick(() => this.change(t, null, 'handed over to #ai',
+                                           '', 'ai')));
+            menu.addItem((i) => i.setTitle('Hand back, with a note…')
+                .setIcon('pencil').onClick(async () => {
+                    const s = await askLine(app, 'Hand back to #ai: what ' +
+                        'did you do or find?', 'briefly', false);
+                    if (s !== null) {
+                        this.change(t, null, 'handed over to #ai', s, 'ai');
+                    }
+                }));
+            menu.addSeparator();
+            menu.addItem((i) => i.setTitle('Done').setIcon('check')
+                .onClick(() => this.change(t, 'x', 'done', '')));
+            menu.addItem((i) => i.setTitle('Done, with a note…')
+                .setIcon('pencil').onClick(async () => {
+                    const s = await askLine(app, 'Done: how?',
+                        'what was done, briefly', false);
+                    if (s !== null) this.change(t, 'x', 'done', s);
+                }));
+            if (t.state !== '/') {
+                menu.addItem((i) => i.setTitle('Started').setIcon('play')
+                    .onClick(() => this.change(t, '/', 'started', '')));
+            }
+            menu.addItem((i) => i.setTitle('Won\'t do…').setIcon('x')
+                .onClick(async () => {
+                    const s = await askLine(app, 'Won\'t do: why?',
+                        'the reason it is dropped', true);
+                    if (s !== null) this.change(t, '-', 'dropped', s);
+                }));
+            menu.showAtMouseEvent(e);
+        });
+    }
+
+    async change(t, ch, verb, note, owner) {
+        const vault = this.plugin.app.vault;
+        let before = null, after = null;
+        await vault.process(t.file, (data) => {
+            const next = setStatus(data, t.id, ch, verb, note, today(),
+                                   owner);
+            if (next === null) return data;
+            before = data; after = next;
+            return next;
+        });
+        if (after === null) {
+            new Notice(`Open Tasks: could not find ^${t.id} in ` +
+                `${t.file.basename}; nothing was changed.`);
+            return;
+        }
+        const frag = createFragment((f) => {
+            f.appendText(`${owner ? 'Handed back to #ai' : 'Marked ' + verb}` +
+                `: ${t.file.basename}. `);
+            const a = f.createEl('a', { text: 'Undo', href: '#' });
+            a.addEventListener('click', async (e) => {
+                e.preventDefault();
+                let undone = false;
+                await vault.process(t.file, (data) => {
+                    if (data !== after) return data;
+                    undone = true;
+                    return before;
+                });
+                new Notice(undone ? 'Open Tasks: undone.' :
+                    'Open Tasks: the note changed since; undo it by hand.');
+            });
+        });
+        new Notice(frag, 6000);
     }
 
     /**
@@ -485,6 +657,19 @@ class OpenTasksSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.priorityBars)
                 .onChange(async (v) => {
                     this.plugin.settings.priorityBars = v;
+                    await this.plugin.saveData(this.plugin.settings);
+                }));
+        new Setting(containerEl)
+            .setName('Let me mark my #human tasks')
+            .setDesc('Click the status box of an open #human task to mark ' +
+                'it done; right-click or long-press for done with a note, ' +
+                'started, or won\'t do. Each writes the checkbox and a ' +
+                'dated note in the task\'s own note. Off by default; ' +
+                '#ai tasks always stay read-only.')
+            .addToggle((tg) => tg
+                .setValue(this.plugin.settings.humanTicks)
+                .onChange(async (v) => {
+                    this.plugin.settings.humanTicks = v;
                     await this.plugin.saveData(this.plugin.settings);
                 }));
     }
@@ -531,3 +716,4 @@ module.exports = class OpenTasksPlugin extends Plugin {
 module.exports.parseTask = parseTask;
 module.exports.byDateDesc = byDateDesc;
 module.exports.statusNotes = statusNotes;
+module.exports.setStatus = setStatus;

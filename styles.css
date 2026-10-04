@@ -115,3 +115,14 @@ ul.open-tasks-list {
 .open-tasks-deps.is-ready {
     color: var(--color-green);
 }
+
+/* A #human task's status box, when Derek may change it from the view */
+.open-tasks-status.is-actionable {
+    pointer-events: auto;
+    cursor: pointer;
+    border-radius: var(--radius-s);
+}
+
+.open-tasks-status.is-actionable:hover svg {
+    stroke: var(--text-accent);
+}

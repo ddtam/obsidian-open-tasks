@@ -52,9 +52,18 @@ The verbs are `started`, `waiting` (named `deferred` before 2026-10-03, still re
 - Done and won't-do tasks in a collapsed list, newest first by that date, undated last. Won't-do tasks are struck through.
 - `No folder at "<path>"` for a path that does not exist, rather than an empty list.
 
+## Marking your own #human tasks
+
+With **Let me mark my #human tasks** on in the plugin's settings (off by default), an open `#human` task's status box can be clicked:
+
+- a task a session handed to you, whose latest handover note says `handed over to #human`, is **handed back**: the line is retagged `#ai` and `- <date> handed over to #ai.` is added, since the session still has work on it;
+- a task that was yours from the start is **marked done**: `[x]` and `- <date> done.`
+
+Right-click, or long-press on a phone, for: hand back with a note, done, done with a note, started, and won't do (which asks for a reason). Each is one atomic write to the task's own note, followed by a notice with **Undo**. `#ai` tasks are never clickable.
+
 ## What it does not do
 
-- **No checkboxes.** The view never edits a note; change a task in its own note. A checkbox here would be a second place to hold a task's state.
+- **No checkboxes.** Apart from the `#human` actions above, the view never edits a note. A checkbox here would be a second place to hold a task's state.
 - **No sorting beyond priority** for open tasks. Within a group they are in note order, README first, then by path, and in line order within a note, which is the order their author wrote them in.
 
 ## Conventions it assumes
