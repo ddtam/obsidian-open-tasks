@@ -26,7 +26,7 @@ One line carries four facts, each in one place:
 
 | fact | written as |
 |---|---|
-| status | the checkbox: `[ ]` to do, `[/]` in progress, `[>]` deferred, `[-]` won't do, `[x]` done |
+| status | the checkbox: `[ ]` to do, `[/]` in progress, `[>]` waiting, `[-]` won't do, `[x]` done |
 | priority | `#p1`, `#p2` or `#p3`, as in Todoist; no tag is p4, the lowest, and is listed as Priority 4 |
 | owner | `#human` or `#ai`, whoever acts next; untagged is unassigned |
 | identity | a trailing `^task-<slug>` block id |
@@ -38,10 +38,10 @@ One line carries four facts, each in one place:
     - 2026-10-01 started.
     - 2026-10-02 done: clears 4 of 22 clone pairs.
 - [>] **Recover AML0051's FLT3 calls** #p3 #ai ^task-recover-aml0051-flt3
-    - 2026-10-02 deferred after [[FLT3 note#^task-lost-driver-repair|the repair]].
+    - 2026-10-02 waiting on [[FLT3 note#^task-lost-driver-repair|the repair]].
 ```
 
-The verbs are `started`, `deferred`, `resumed`, `handed over`, `done` and `dropped`. The task line holds only the lead, tags and id, so a status change flips the checkbox and adds a child without rewriting the line. The view dates a task by its latest status note, and a deferred task's blockers are the task links in its latest `deferred` note, in this project or another (a full-path link such as `[[Projects/Other/README#^task-x|...]]` is resolved through Obsidian's link resolution, and the view redraws when that note changes); while the view's blocker shows `Waiting on ...` or `ready to resume`, the deferred task's own checkbox is left for whoever resumes it. A task still written in the older form, with its date inline, is dated by the latest date on its line or in its block until it is migrated.
+The verbs are `started`, `waiting` (named `deferred` before 2026-10-03, still read), `resumed`, `handed over`, `done` and `dropped`. The task line holds only the lead, tags and id, so a status change flips the checkbox and adds a child without rewriting the line. The view dates a task by its latest status note, and a waiting task's blockers are the task links in its latest `waiting` note, in this project or another (a full-path link such as `[[Projects/Other/README#^task-x|...]]` is resolved through Obsidian's link resolution, and the view redraws when that note changes); while the view's blocker shows `Waiting on ...` or `ready to resume`, the deferred task's own checkbox is left for whoever resumes it. A task still written in the older form, with its date inline, is dated by the latest date on its line or in its block until it is migrated.
 
 ## What it shows
 

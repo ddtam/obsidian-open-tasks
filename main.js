@@ -22,20 +22,20 @@
  *
  * One line carries four facts, each in one place:
  *   status    the checkbox character: [ ] to do, [/] in progress,
- *             [>] deferred, [-] won't do, [x] done
+ *             [>] waiting, [-] won't do, [x] done
  *   priority  #p1 to #p3, as in Todoist; untagged sorts last
  *   owner     #human or #ai, whoever acts next; untagged is unassigned
  *   identity  a trailing ^task-<slug> block id
  *
  * Each status change is a child bullet under the task, date first and
  * a fixed verb: `    - 2026-10-02 done: how.` The latest one dates the
- * task. A deferred [>] task waits on the tasks its latest `deferred`
+ * task. A waiting [>] task waits on the tasks its latest `waiting`
  * note links to by block id; the view says whether those are still
  * open or all closed.
  *
  * Each status change is a child bullet under the task, date first and
  * a fixed verb: `    - 2026-10-02 done: how.` The latest one dates the
- * task. A deferred [>] task waits on the tasks its latest `deferred`
+ * task. A waiting [>] task waits on the tasks its latest `waiting`
  * note links to by block id; the view says whether those are still
  * open or all closed.
  *
@@ -65,7 +65,7 @@ const {
 // coloured bar on every row repeats it.
 const DEFAULT_SETTINGS = { priorityBars: false };
 
-const PRIORITY = /(^|\s)#p([1-3])\b/;
+const PRIORITY = /(^|\s)#p([1-4])\b/;
 const OWNER = /(^|\s)#(human|ai)\b/;
 const BLOCK_ID = /\s\^([A-Za-z0-9-]+)\s*$/;
 const TASK_PREFIX = /^\s*(?:[-*+]|\d+[.)])\s+\[(.)\]\s*/;
@@ -83,7 +83,7 @@ const NAMED = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue',
 const STATUS = {
     ' ': { open: true, label: 'to do', mark: null },
     '/': { open: true, label: 'in progress', mark: 'M5 11 L11 5' },
-    '>': { open: true, label: 'deferred', mark: 'M6.5 5 L9.5 8 L6.5 11' },
+    '>': { open: true, label: 'waiting', mark: 'M6.5 5 L9.5 8 L6.5 11' },
     '-': { open: false, label: "won't do", mark: 'M5 8 H11',
         dropped: true },
     'x': { open: false, label: 'done', mark: 'M4.8 8.2 L7 10.4 L11.2 5.6' },
@@ -193,7 +193,7 @@ function statusGlyph(ch, status) {
 // One status note: an indented child bullet, date first, then a fixed
 // verb. `    - 2026-10-02 done: clears 4 of 22.`
 const STATUS_NOTE = new RegExp('^\\s*(?:[-*+])\\s+(\\d{4}-\\d{2}-\\d{2})\\s+' +
-    '(started|deferred|resumed|handed over|done|dropped)\\b(.*)$');
+    '(started|waiting|deferred|resumed|handed over|done|dropped)\\b(.*)$');
 
 /**
  * The status notes under a task: the child bullets indented deeper than
@@ -295,7 +295,9 @@ class OpenTasksView extends MarkdownRenderChild {
                 if (notes.length) {
                     t.date = notes[notes.length - 1].date;
                     const def = [...notes].reverse()
-                        .find((s) => s.verb === 'deferred');
+                        // `deferred` is the verb's name before 2026-10-03.
+                        .find((s) => s.verb === 'waiting' ||
+                              s.verb === 'deferred');
                     if (def) {
                         t.after = linksIn(def.rest);
                     }
