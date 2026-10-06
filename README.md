@@ -54,7 +54,7 @@ The verbs are `started`, `waiting` (named `deferred` before 2026-10-03, still re
 
 ## Marking your own #human tasks
 
-With **Let me mark my #human tasks** on in the plugin's settings (off by default), an open `#human` task's status box can be clicked:
+With `mark: human` in the block, or **Let me mark my #human tasks** on in the plugin's settings (off by default), an open `#human` task's status box can be clicked. The block line is the one to use where notes sync across devices, since it travels with the note while a plugin setting is per device:
 
 - a task a session handed to you, whose latest handover note says `handed over to #human`, is **handed back**: the line is retagged `#ai` and `- <date> handed over to #ai in the task view.` is added, since the session still has work on it;
 - a task that was yours from the start is **marked done**: `[x]` and `- <date> done in the task view.`

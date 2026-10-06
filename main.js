@@ -320,6 +320,10 @@ class OpenTasksView extends MarkdownRenderChild {
         this.root = (cfg.path || folderOf(sourcePath)).replace(/\/+$/, '');
         this.withId = (cfg.tasks || '').toLowerCase() === 'with-id';
         this.owner = (cfg.owner || '').toLowerCase() || null;
+        // `mark: human` in the block turns on marking for this view. It
+        // lives in the note, so it reaches every device LiveSync reaches,
+        // where the plugin setting is per device and may never sync.
+        this.markHuman = (cfg.mark || '').toLowerCase() === 'human';
         this.refresh = debounce(() => this.render(), 300, true);
     }
 
@@ -522,7 +526,8 @@ class OpenTasksView extends MarkdownRenderChild {
             paras[0].addClass('open-tasks-text');
             const glyph = statusGlyph(t.state, status);
             paras[0].prepend(glyph);
-            if (this.plugin.settings.humanTicks && t.owner === 'human' &&
+            if ((this.markHuman || this.plugin.settings.humanTicks) &&
+                t.owner === 'human' &&
                 status.open && t.id) {
                 this.actionable(glyph, t);
             }
@@ -547,22 +552,45 @@ class OpenTasksView extends MarkdownRenderChild {
         glyph.setAttr('title', `${t.state === '/' ? 'in progress' :
             'to do'}: click to ${back ? 'hand back to #ai' : 'mark done'}` +
             '; right-click for more');
-        // In Live Preview the editor claims a press on a rendered block and
-        // swaps it back to source before the click lands, so the press is
-        // stopped here, before the editor sees it; a tap on a phone never
-        // reached that path, which is why the click worked there first.
-        for (const ev of ['mousedown', 'pointerdown', 'touchstart']) {
-            glyph.addEventListener(ev, (e) => {
-                e.preventDefault(); e.stopPropagation();
-            }, { passive: false });
-        }
-        glyph.addEventListener('click', (e) => {
-            e.preventDefault(); e.stopPropagation();
+        const act = () => {
             if (back) this.change(t, null, 'handed over to #ai', '', 'ai');
             else this.change(t, 'x', 'done', '');
+        };
+        // The action fires on pointer-up, which a mouse, a finger and a pen
+        // all produce, rather than on click, which a cancelled touch
+        // suppresses. Only a mouse press is cancelled, since that is what
+        // Live Preview claims to swap a rendered block back to source; a
+        // touch is left alone so a tap and a long-press both still work.
+        // A press held past LONG_PRESS_MS is a long-press for the menu.
+        const LONG_PRESS_MS = 500;
+        let down = 0;
+        glyph.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            down = Date.now();
+            e.stopPropagation();
+            if (e.pointerType === 'mouse') e.preventDefault();
+        });
+        glyph.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            if (e.button === 0) e.preventDefault();
+        });
+        glyph.addEventListener('pointerup', (e) => {
+            if (!down || e.button !== 0) return;
+            const held = Date.now() - down;
+            down = 0;
+            e.stopPropagation();
+            if (held < LONG_PRESS_MS) act();
+        });
+        glyph.addEventListener('pointercancel', () => { down = 0; });
+        glyph.addEventListener('pointerleave', () => { down = 0; });
+        // The click that follows is already handled; keep it from reaching
+        // the note, where it would open the block or follow nothing.
+        glyph.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
         });
         glyph.addEventListener('contextmenu', (e) => {
             e.preventDefault(); e.stopPropagation();
+            down = 0;
             const app = this.plugin.app;
             const menu = new Menu();
             menu.addItem((i) => i.setTitle('My part is done: hand back to #ai')
@@ -739,3 +767,4 @@ module.exports.parseTask = parseTask;
 module.exports.byDateDesc = byDateDesc;
 module.exports.statusNotes = statusNotes;
 module.exports.setStatus = setStatus;
+module.exports.OpenTasksView = OpenTasksView;
