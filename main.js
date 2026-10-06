@@ -547,6 +547,15 @@ class OpenTasksView extends MarkdownRenderChild {
         glyph.setAttr('title', `${t.state === '/' ? 'in progress' :
             'to do'}: click to ${back ? 'hand back to #ai' : 'mark done'}` +
             '; right-click for more');
+        // In Live Preview the editor claims a press on a rendered block and
+        // swaps it back to source before the click lands, so the press is
+        // stopped here, before the editor sees it; a tap on a phone never
+        // reached that path, which is why the click worked there first.
+        for (const ev of ['mousedown', 'pointerdown', 'touchstart']) {
+            glyph.addEventListener(ev, (e) => {
+                e.preventDefault(); e.stopPropagation();
+            }, { passive: false });
+        }
         glyph.addEventListener('click', (e) => {
             e.preventDefault(); e.stopPropagation();
             if (back) this.change(t, null, 'handed over to #ai', '', 'ai');
