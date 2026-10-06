@@ -59,7 +59,7 @@ With `mark: human` in the block, or **Let me mark my #human tasks** on in the pl
 - a task a session handed to you, whose latest handover note says `handed over to #human`, is **handed back**: the line is retagged `#ai` and `- <date> handed over to #ai in the task view.` is added, since the session still has work on it;
 - a task that was yours from the start is **marked done**: `[x]` and `- <date> done in the task view.`
 
-Right-click, or long-press on a phone, for: hand back with a note, done, done with a note, started, and won't do (which asks for a reason). Each is one atomic write to the task's own note, followed by a notice with **Undo**. Every note the view writes ends its verb with "in the task view", so a close that records no detail reads as a click rather than as a session that skipped it. `#ai` tasks are never clickable.
+Right-click, or long-press on a phone, for: hand back with a note, done, done with a note, started, waiting (which asks until when: a date, an event, or a `^task-` link; a bare date or event is written as `until ...`), resume on a waiting task (back to in progress), and won't do (which asks for a reason). Each is one atomic write to the task's own note, followed by a notice with **Undo**. Every note the view writes ends its verb with "in the task view", so a close that records no detail reads as a click rather than as a session that skipped it. `#ai` tasks are never clickable.
 
 ## What it does not do
 

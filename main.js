@@ -614,9 +614,32 @@ class OpenTasksView extends MarkdownRenderChild {
                         'what was done, briefly', false);
                     if (s !== null) this.change(t, 'x', 'done', s);
                 }));
-            if (t.state !== '/') {
-                menu.addItem((i) => i.setTitle('Started').setIcon('play')
-                    .onClick(() => this.change(t, '/', 'started', '')));
+            if (t.state === '>') {
+                // A resume from the view restarts work at once, so it
+                // returns to [/]; the convention's other reading, merely
+                // unblocked, is left to a session.
+                menu.addItem((i) => i.setTitle('Resume').setIcon('play')
+                    .onClick(() => this.change(t, '/', 'resumed', '')));
+            } else {
+                if (t.state !== '/') {
+                    menu.addItem((i) => i.setTitle('Started').setIcon('play')
+                        .onClick(() => this.change(t, '/', 'started', '')));
+                }
+                // A waiting note names its object, so the reason is
+                // required: "until 2026-11-01" or an observable event.
+                menu.addItem((i) => i.setTitle('Waiting…').setIcon('pause')
+                    .onClick(async () => {
+                        const s = await askLine(app, 'Waiting until?',
+                            'a date (YYYY-MM-DD) or an event someone ' +
+                            'could see happen', true);
+                        if (s === null) return;
+                        // A bare date or event reads as "until ...",
+                        // which is the form the hook and vault-lint read
+                        // a waiting date from; a task link stands alone.
+                        const named = /\buntil\b|\^task-/i.test(s);
+                        this.change(t, '>', 'waiting',
+                                    named ? s : `until ${s.trim()}`);
+                    }));
             }
             menu.addItem((i) => i.setTitle('Won\'t do…').setIcon('x')
                 .onClick(async () => {
