@@ -25,13 +25,20 @@
 }
 
 .open-tasks-group-title,
-.open-tasks-done > summary {
+.open-tasks-done > summary,
+.open-tasks-lint > summary {
     font-weight: var(--font-semibold);
     margin: var(--size-4-3) 0 var(--size-4-1);
 }
 
-.open-tasks-done > summary {
+.open-tasks-done > summary,
+.open-tasks-lint > summary {
     cursor: pointer;
+}
+
+/* Upkeep, not the project's work: quieter than the groups above. */
+.open-tasks-lint > summary {
+    color: var(--text-muted);
 }
 
 ul.open-tasks-list {

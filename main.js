@@ -15,6 +15,13 @@
  * is not mistaken for work; without it every checkbox counts. `owner`
  * keeps only tasks tagged #human or #ai.
  *
+ * A task tagged #lint/<check> acknowledges a linter warning; vault-lint
+ * writes them. They are upkeep, not the project's work, so by default
+ * they sit in their own collapsed list and are left out of the counts,
+ * the progress bar and the priority groups, which would otherwise
+ * measure linter traffic. `lint: only` shows them alone, with their own
+ * counts; `lint: include` treats them as ordinary tasks.
+ *
  * Tasks live in the notes where they arose, one checkbox each, placed
  * wherever they are relevant; this view only indexes them and links
  * back into that context, so it holds no second copy that could
@@ -71,6 +78,7 @@ const DEFAULT_SETTINGS = { priorityBars: false, humanTicks: false };
 
 const PRIORITY = /(^|\s)#p([1-4])\b/;
 const OWNER = /(^|\s)#(human|ai)\b/;
+const LINT = /(^|\s)#lint\/[\w-]+/;
 const BLOCK_ID = /\s\^([A-Za-z0-9-]+)\s*$/;
 const TASK_PREFIX = /^\s*(?:[-*+]|\d+[.)])\s+\[(.)\]\s*/;
 const ISO_DATE = /\b(\d{4}-\d{2}-\d{2})\b/g;
@@ -156,6 +164,7 @@ function parseTask(line) {
         id,
         priority: p ? Number(p) : 5,
         owner: owner || null,
+        lint: LINT.test(text),
         date: dates.length ? dates[dates.length - 1] : null,
         after,
     };
@@ -324,6 +333,9 @@ class OpenTasksView extends MarkdownRenderChild {
         // lives in the note, so it reaches every device LiveSync reaches,
         // where the plugin setting is per device and may never sync.
         this.markHuman = (cfg.mark || '').toLowerCase() === 'human';
+        // `separate` (the default), `only` or `include`.
+        const lint = (cfg.lint || '').toLowerCase();
+        this.lint = ['only', 'include'].includes(lint) ? lint : 'separate';
         this.refresh = debounce(() => this.render(), 300, true);
     }
 
@@ -449,7 +461,13 @@ class OpenTasksView extends MarkdownRenderChild {
                 text: `No folder at "${this.root}".` });
             return;
         }
-        const tasks = await this.collect();
+        let tasks = await this.collect();
+        let upkeep = [];
+        if (this.lint === 'only') tasks = tasks.filter((t) => t.lint);
+        else if (this.lint === 'separate') {
+            upkeep = tasks.filter((t) => t.lint);
+            tasks = tasks.filter((t) => !t.lint);
+        }
         const open = tasks.filter((t) => statusOf(t.state).open);
         const closed = tasks.filter((t) => !statusOf(t.state).open)
             .sort(byDateDesc);
@@ -462,6 +480,7 @@ class OpenTasksView extends MarkdownRenderChild {
 
         const scope = [this.root || 'the vault'];
         if (this.owner) scope.push(`#${this.owner} only`);
+        if (this.lint === 'only') scope.push('lint tasks only');
         const parts = [`${open.length} open`, `${done} done`];
         if (dropped.length) parts.push(`${dropped.length} won't do`);
         el.createDiv({ cls: 'open-tasks-summary', text:
@@ -474,6 +493,7 @@ class OpenTasksView extends MarkdownRenderChild {
         if (!tasks.length) {
             el.createDiv({ cls: 'open-tasks-empty',
                 text: 'No tasks in these notes.' });
+            await this.upkeep(el, upkeep);
             return;
         }
         if (denom) {
@@ -493,6 +513,8 @@ class OpenTasksView extends MarkdownRenderChild {
             for (const t of rows) await this.row(ul, t);
         }
 
+        await this.upkeep(el, upkeep);
+
         if (closed.length) {
             const det = el.createEl('details', { cls: 'open-tasks-done' });
             det.createEl('summary', { text: `Done and won't do ` +
@@ -500,6 +522,22 @@ class OpenTasksView extends MarkdownRenderChild {
             const ul = det.createEl('ul', { cls: 'open-tasks-list' });
             for (const t of closed) await this.row(ul, t);
         }
+    }
+
+    /**
+     * Open lint tasks, collapsed, outside every count above. Closed ones
+     * are not listed: closing a lint task settles nothing, so its
+     * history is no measure of anything.
+     */
+    async upkeep(el, tasks) {
+        const open = tasks.filter((t) => statusOf(t.state).open)
+            .sort((a, b) => a.priority - b.priority);
+        if (!open.length) return;
+        const det = el.createEl('details', { cls: 'open-tasks-lint' });
+        det.createEl('summary', { text: `Lint tasks (${open.length} ` +
+            'open), not counted above' });
+        const ul = det.createEl('ul', { cls: 'open-tasks-list' });
+        for (const t of open) await this.row(ul, t);
     }
 
     async row(ul, t) {

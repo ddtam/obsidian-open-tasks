@@ -15,6 +15,7 @@ Every line is optional:
 - `path`: the folder to read, including subfolders. Without it, the folder of the note holding the block. `path: Projects` covers every project at once.
 - `tasks: with-id`: count only checkboxes ending in a `^block-id`. Without it every checkbox counts, including checklists such as reading-path ticks.
 - `owner: human` or `owner: ai`: keep only tasks with that owner tag. Without it every task is shown, each with its owner chip.
+- `lint`: where tasks tagged `#lint/<name>` go. These record upkeep raised by a linter rather than the project's own work. By default (`separate`) they sit in a collapsed list of their own and are left out of the counts, the progress bar and the priority groups, so the completion rate measures the work. `lint: only` shows them alone, with their own counts; `lint: include` treats them as ordinary tasks.
 
 ## The task line
 
